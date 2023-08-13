@@ -1,0 +1,192 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron&display=swap');
+
+body {
+  background-color: black;
+}
+.clock {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-50%);
+  color: #fff;
+  font-size: 60px;
+  font-family: 'Orbitron', sans-serif; /* Modern bir yazı tipi kullanılıyor */
+}
+.clock span {
+    display: inline-block;
+    transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+.signature {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    color: #fff;
+    font-size: 30px;
+    font-family: 'Orbitron', sans-serif; /* Modern bir yazı tipi kullanılıyor */
+    opacity: 0;
+    transition: opacity 2s ease-in-out;
+}
+.switch-button {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    color: #fff;
+    font-size: 30px;
+    font-family: 'Orbitron', sans-serif; /* Modern bir yazı tipi kullanılıyor */
+    cursor: pointer;
+    opacity: 1;
+    transition: opacity 2s ease-in-out; /* Animasyon eklenmiştir */
+}
+.analog-clock {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-50%);
+}
+.analog-clock .face {
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    border: solid white 2px;
+}
+.analog-clock .hand {
+   position:absolute; 
+   bottom :50%; 
+   left :50%; 
+   transform-origin:center bottom; 
+   transition-property : transform; 
+   transition-duration : .5s; 
+   transition-timing-function : cubic-bezier(0.1,2.7,0.58,1);
+}
+.analog-clock .hour-hand {
+   width :4px; 
+   height :70px; 
+   background-color:white; 
+}
+.analog-clock .minute-hand {
+   width :3px; 
+   height :100px; 
+   background-color:white; 
+}
+.analog-clock .second-hand {
+   width :2px; 
+   height :120px; 
+   background-color:red; 
+}
+.message {
+    display:none;
+    position:absolute;
+    top :50%;
+    left :50%;
+    transform :translateX(-50%) translateY(-50%);
+    color:#fff;
+    font-size :60px;
+    font-family :'Orbitron', sans-serif; /* Modern bir yazı tipi kullanılıyor */
+}
+</style>
+</head>
+<body>
+
+<div class="clock"></div> <!-- Dijital saat -->
+<div class="signature">Duhan Aslan</div> <!-- İmza -->
+<div class="switch-button">Analog'a Geç</div> <!-- Saat değiştirme butonu -->
+
+<div class="analog-clock"> <!-- Analog saat -->
+   <div class="face">
+      <div class="hand hour-hand"></div> <!-- Saat ibresi -->
+      <div class="hand minute-hand"></div> <!-- Dakika ibresi -->
+      <div class="hand second-hand"></div> <!-- Saniye ibresi -->
+   </div>
+</div>
+
+<div class="message">Medine Seni Çok Seviyorum ❤</div> <!-- Mesaj -->
+
+<audio id="tickSound" src="tick.wav"></audio> <!-- Sound for each second transition -->
+
+<script>
+const clock = document.querySelector('.clock'); // Dijital saat elementini seç
+const signature = document.querySelector('.signature'); // İmza elementini seç
+const switchButton = document.querySelector('.switch-button'); // Saat değiştirme butonunu seç
+const analogClock = document.querySelector('.analog-clock'); // Analog saat elementini seç
+const hourHand = document.querySelector('.hour-hand'); // Saat ibresini seç
+const minuteHand = document.querySelector('.minute-hand'); // Dakika ibresini seç
+const secondHand = document.querySelector('.second-hand'); // Saniye ibresini seç
+const message = document.querySelector('.message'); // Mesaj elementini seç
+const tickSound = document.getElementById('tickSound'); // Sound elementini seç
+
+let isAnalog = false;
+
+const tick = () => { // Her saniye çalışacak fonksiyon
+    
+    const now = new Date(); // Şu anki zamanı al
+    
+    if (now.getHours() === 0 && now.getMinutes() === 0 && now.getSeconds() === 0) { // Eğer saat 00:00 ise
+        message.style.display = 'block'; // Mesajı göster
+    } else {
+        message.style.display = 'none'; // Mesajı gizle
+    }
+    
+    if (!isAnalog) { // Eğer dijital saat gösteriliyorsa
+        const h = now.getHours(); // Saati al
+        const m = now.getMinutes(); // Dakikayı al
+        const s = now.getSeconds(); // Saniyeyi al
+        const html = `
+            <span>${h.toString().padStart(2, '0')}</span> :
+            <span>${m.toString().padStart(2, '0')}</span> :
+            <span>${s.toString().padStart(2, '0')}</span>
+        `; // Dijital saat için HTML oluştur (dakikadaki sıfırın gözükmesi sağlanmıştır)
+        clock.innerHTML = html; // Dijital saatin içeriğini güncelle
+        clock.style.display = 'block'; // Dijital saati göster
+        analogClock.style.display = 'none'; // Analog saati gizle
+        switchButton.innerHTML = 'Analog\'a Geç'; // Buton yazısını güncelle
+        
+        return;
+    }
+    
+    clock.style.display = 'none'; // Dijital saati gizle
+    
+    let secondsRatio = now.getSeconds() / 60; // Saniye oranını hesapla
+    let minutesRatio = (secondsRatio + now.getMinutes()) / 60; // Dakika oranını hesapla
+    let hoursRatio = (minutesRatio + now.getHours()) / 12; // Saat oranını hesapla
+   
+    setRotation(secondHand, secondsRatio); // Saniye ibresini döndür
+    setRotation(minuteHand, minutesRatio); // Dakika ibresini döndür
+    setRotation(hourHand, hoursRatio); // Saat ibresini döndür
+
+    // Sound for each second transition
+    if (now.getMilliseconds() === 0) {
+        tickSound.currentTime = 0;
+        tickSound.play();
+    }
+   
+    analogClock.style.display = 'block'; // Analog saati göster
+    switchButton.innerHTML = 'Dijital\'e Geç'; // Buton yazısını güncelle
+};
+
+function setRotation(element, rotationRatio){ // İbre döndürme fonksiyonu
+    element.style.setProperty('transform', `rotate(${rotationRatio * 360}deg)`);
+}
+
+setInterval(tick, 1000); // Her saniye tick fonksiyonunu çalıştır
+
+window.addEventListener('load', () => { // Sayfa yüklendiğinde
+    signature.style.opacity = '1'; // İmzayı göster
+});
+
+switchButton.addEventListener('click', () => { // Saat değiştirme butonuna tıklandığında
+    isAnalog = !isAnalog; // Saat tipini değiştir
+    switchButton.style.opacity = '0'; // Butonu gizle (animasyonlu)
+    setTimeout(() => {
+        switchButton.style.opacity = '1'; // Butonu tekrar göster (animasyonlu)
+    }, 2000);
+});
+</script>
+
+</body>
+</html>
